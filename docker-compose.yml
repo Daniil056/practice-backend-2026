@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: booking_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/var/www/html
+    depends_on:
+      - mysql
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+
+  mysql:
+    image: mysql:8.0
+    container_name: booking_mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: booking
+      MYSQL_USER: booking
+      MYSQL_PASSWORD: secret
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
