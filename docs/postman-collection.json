@@ -1,0 +1,46 @@
+{
+  "info": {
+    "name": "Booking API - Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"email\":\"admin@example.com\",\"password\":\"password\"}"},
+            "url": {"raw": "http://localhost:8000/api/login", "protocol": "http", "host": ["localhost:8000"], "path": ["api", "login"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Resources",
+      "item": [
+        {
+          "name": "Get Resources",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/api/resources", "protocol": "http", "host": ["localhost:8000"], "path": ["api", "resources"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Overview",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "http://localhost:8000/api/analytics/overview", "protocol": "http", "host": ["localhost:8000"], "path": ["api", "analytics", "overview"]}
+          }
+        }
+      ]
+    }
+  ]
+}
