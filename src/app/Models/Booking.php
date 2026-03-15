@@ -9,7 +9,6 @@ class Booking extends Model
 {
     use HasFactory;
 
-    // Поля, которые можно заполнять массово
     protected $fillable = [
         'user_id',
         'resource_id',
@@ -19,21 +18,36 @@ class Booking extends Model
         'purpose',
     ];
 
-    // Преобразование типов
     protected $casts = [
         'start_time' => 'datetime',
         'end_time' => 'datetime',
     ];
 
-    // Связь с пользователем
+    // Статусы
+    const STATUS_PENDING = 'pending';
+    const STATUS_CONFIRMED = 'confirmed';
+    const STATUS_CANCELLED = 'cancelled';
+    const STATUS_COMPLETED = 'completed';
+
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    // Связь с ресурсом
     public function resource()
     {
         return $this->belongsTo(Resource::class);
+    }
+
+    // Проверка, можно ли отменить
+    public function canBeCancelled()
+    {
+        return !in_array($this->status, [self::STATUS_CONFIRMED, self::STATUS_COMPLETED]);
+    }
+
+    // Проверка, можно ли подтвердить
+    public function canBeConfirmed()
+    {
+        return $this->status === self::STATUS_PENDING;
     }
 }

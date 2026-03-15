@@ -22,4 +22,14 @@ class Resource extends Model
         'features' => 'array',
         'is_active' => 'boolean',
     ];
+
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    public function activeBookings()
+    {
+        return $this->hasMany(Booking::class)->whereNotIn('status', ['cancelled']);
+    }
 }

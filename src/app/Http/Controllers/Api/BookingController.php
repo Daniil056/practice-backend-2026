@@ -10,7 +10,9 @@ use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
-    // Список всех бронирований (или своих)
+    /**
+     * Список всех бронирований
+     */
     public function index(Request $request)
     {
         $query = Booking::with(['user', 'resource']);
@@ -30,10 +32,19 @@ class BookingController extends Controller
             $query->where('resource_id', $request->resource_id);
         }
 
+        // Фильтрация по дате
+        if ($request->has('date')) {
+            $date = $request->date;
+            $query->whereDate('start_time', '<=', $date)
+                  ->whereDate('end_time', '>=', $date);
+        }
+
         return $query->latest()->paginate(15);
     }
 
-    // Создание бронирования
+    /**
+     * Создание бронирования
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -58,6 +69,7 @@ class BookingController extends Controller
         if ($hasConflict) {
             return response()->json([
                 'message' => 'This resource is already booked for the selected time period',
+                'error' => 'Time conflict'
             ], 422);
         }
 
@@ -76,7 +88,9 @@ class BookingController extends Controller
         ], 201);
     }
 
-    // Просмотр конкретного бронирования
+    /**
+     * Просмотр конкретного бронирования
+     */
     public function show(Booking $booking)
     {
         // Проверка доступа
@@ -87,11 +101,20 @@ class BookingController extends Controller
         return response()->json($booking->load(['user', 'resource']));
     }
 
-    // Подтверждение бронирования (админ)
+    /**
+     * Подтверждение бронирования (только админ)
+     */
     public function confirm(Booking $booking)
     {
         if (request()->user()->role !== 'admin') {
             return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        // Можно подтвердить только pending бронирование
+        if ($booking->status !== 'pending') {
+            return response()->json([
+                'message' => 'Only pending bookings can be confirmed'
+            ], 422);
         }
 
         $booking->update(['status' => 'confirmed']);
@@ -102,12 +125,21 @@ class BookingController extends Controller
         ]);
     }
 
-    // Отмена бронирования
+    /**
+     * Отмена бронирования
+     */
     public function cancel(Booking $booking)
     {
         // Пользователь может отменить только своё, админ - любое
         if ($booking->user_id !== request()->user()->id && request()->user()->role !== 'admin') {
             return response()->json(['message' => 'Forbidden'], 403);
+        }
+
+        // Нельзя отменить уже подтверждённое или завершённое бронирование
+        if (in_array($booking->status, ['confirmed', 'completed'])) {
+            return response()->json([
+                'message' => 'Cannot cancel confirmed or completed booking'
+            ], 422);
         }
 
         $booking->update(['status' => 'cancelled']);
@@ -118,7 +150,9 @@ class BookingController extends Controller
         ]);
     }
 
-    // Мои бронирования
+    /**
+     * Мои бронирования
+     */
     public function myBookings(Request $request)
     {
         $bookings = Booking::where('user_id', $request->user()->id)
@@ -129,12 +163,17 @@ class BookingController extends Controller
         return response()->json($bookings);
     }
 
-    // Обновление и удаление не нужны для бронирований (только отмена)
+    /**
+     * Обновление (не используется)
+     */
     public function update(Request $request, Booking $booking)
     {
-        return response()->json(['message' => 'Use cancel endpoint instead'], 405);
+        return response()->json(['message' => 'Use cancel/confirm endpoints instead'], 405);
     }
 
+    /**
+     * Удаление (не используется)
+     */
     public function destroy(Booking $booking)
     {
         return response()->json(['message' => 'Use cancel endpoint instead'], 405);

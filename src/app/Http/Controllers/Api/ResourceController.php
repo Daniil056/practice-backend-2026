@@ -8,7 +8,9 @@ use Illuminate\Http\Request;
 
 class ResourceController extends Controller
 {
-    // Список всех ресурсов
+    /**
+     * Список всех ресурсов
+     */
     public function index(Request $request)
     {
         $query = Resource::query();
@@ -38,7 +40,9 @@ class ResourceController extends Controller
         return $query->paginate(15);
     }
 
-    // Создание ресурса (только админ)
+    /**
+     * Создание ресурса (только админ)
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -58,13 +62,17 @@ class ResourceController extends Controller
         ], 201);
     }
 
-    // Просмотр конкретного ресурса
+    /**
+     * Просмотр конкретного ресурса
+     */
     public function show(Resource $resource)
     {
-        return response()->json($resource);
+        return response()->json($resource->load('bookings'));
     }
 
-    // Обновление ресурса (только админ)
+    /**
+     * Обновление ресурса (только админ)
+     */
     public function update(Request $request, Resource $resource)
     {
         $request->validate([
@@ -84,9 +92,22 @@ class ResourceController extends Controller
         ]);
     }
 
-    // Удаление ресурса (только админ)
+    /**
+     * Удаление ресурса (только админ)
+     */
     public function destroy(Resource $resource)
     {
+        // Проверка, есть ли активные бронирования
+        $hasBookings = $resource->bookings()
+            ->where('status', '!=', 'cancelled')
+            ->exists();
+
+        if ($hasBookings) {
+            return response()->json([
+                'message' => 'Cannot delete resource with active bookings'
+            ], 422);
+        }
+
         $resource->delete();
 
         return response()->json([
