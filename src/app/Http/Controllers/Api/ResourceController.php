@@ -12,33 +12,58 @@ class ResourceController extends Controller
      * Список всех ресурсов
      */
     public function index(Request $request)
-    {
-        $query = Resource::query();
+{
+    $query = Resource::query();
 
-        // Фильтрация по типу
-        if ($request->has('type')) {
-            $query->where('type', $request->type);
-        }
-
-        // Фильтрация по вместимости
-        if ($request->has('min_capacity')) {
-            $query->where('capacity', '>=', $request->min_capacity);
-        }
-
-        // Поиск по названию или локации
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('location', 'like', "%{$search}%");
-            });
-        }
-
-        // Только активные ресурсы
-        $query->where('is_active', true);
-
-        return $query->paginate(15);
+    // Фильтрация по типу
+    if ($request->has('type')) {
+        $query->where('type', $request->type);
     }
+
+    // Фильтрация по вместимости
+    if ($request->has('min_capacity')) {
+        $query->where('capacity', '>=', $request->min_capacity);
+    }
+
+    if ($request->has('max_capacity')) {
+        $query->where('capacity', '<=', $request->max_capacity);
+    }
+
+    // Фильтрация по локации
+    if ($request->has('location')) {
+        $query->where('location', 'like', "%{$request->location}%");
+    }
+
+    // Поиск по названию или локации
+    if ($request->has('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('location', 'like', "%{$search}%");
+        });
+    }
+
+    // Фильтрация по доступности
+    if ($request->has('is_active')) {
+        $query->where('is_active', filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN));
+    }
+
+    // Сортировка
+    $sortBy = $request->get('sort_by', 'name');
+    $sortOrder = $request->get('sort_order', 'asc');
+    
+    // Разрешенные поля для сортировки
+    $allowedSorts = ['name', 'capacity', 'type', 'created_at', 'updated_at'];
+    if (in_array($sortBy, $allowedSorts)) {
+        $query->orderBy($sortBy, $sortOrder);
+    }
+
+    // Пагинация
+    $perPage = $request->get('per_page', 15);
+    $perPage = min(max($perPage, 1), 100); // от 1 до 100
+
+    return $query->paginate($perPage);
+}
 
     /**
      * Создание ресурса (только админ)

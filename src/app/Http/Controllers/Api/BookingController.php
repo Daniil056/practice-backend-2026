@@ -52,18 +52,33 @@ class BookingController extends Controller
             'start_time' => 'required|date|after:now',
             'end_time' => 'required|date|after:start_time',
             'purpose' => 'nullable|string|max:500',
+        ], [
+            'start_time.after' => 'Start time must be in the future',
+            'end_time.after' => 'End time must be after start time',
         ]);
+
+        // Проверка: бронирование не более чем на 8 часов
+        $start = \Carbon\Carbon::parse($request->start_time);
+        $end = \Carbon\Carbon::parse($request->end_time);
+        $duration = $start->diffInHours($end);
+
+        if ($duration > 8) {
+            return response()->json([
+                'message' => 'Booking duration cannot exceed 8 hours',
+                'error' => 'Duration limit exceeded'
+            ], 422);
+        }
 
         // Проверка на пересечение времени
         $hasConflict = Booking::where('resource_id', $request->resource_id)
             ->where('status', '!=', 'cancelled')
             ->where(function($query) use ($request) {
                 $query->whereBetween('start_time', [$request->start_time, $request->end_time])
-                      ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
-                      ->orWhere(function($q) use ($request) {
-                          $q->where('start_time', '<=', $request->start_time)
+                    ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
+                    ->orWhere(function($q) use ($request) {
+                        $q->where('start_time', '<=', $request->start_time)
                             ->where('end_time', '>=', $request->end_time);
-                      });
+                    });
             })->exists();
 
         if ($hasConflict) {
