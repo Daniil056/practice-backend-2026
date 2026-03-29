@@ -70,6 +70,10 @@ class ResourceController extends Controller
      */
     public function store(Request $request)
     {
+        if (auth()->user()->role !== 'admin') {
+            return response()->json(['error' => 'Access denied. Admins only.'], 403);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:meeting_room,desk,office',
@@ -100,6 +104,10 @@ class ResourceController extends Controller
      */
     public function update(Request $request, Resource $resource)
     {
+        if (auth()->user()->role !== 'admin') {
+            return response()->json(['error' => 'Access denied. Admins only.'], 403);
+        }
+
         $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'type' => 'sometimes|required|in:meeting_room,desk,office',
@@ -122,6 +130,9 @@ class ResourceController extends Controller
      */
     public function destroy(Resource $resource)
     {
+        if (auth()->user()->role !== 'admin') {
+            return response()->json(['error' => 'Access denied. Admins only.'], 403);
+        }
         // Проверка, есть ли активные бронирования
         $hasBookings = $resource->bookings()
             ->where('status', '!=', 'cancelled')

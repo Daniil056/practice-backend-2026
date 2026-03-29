@@ -32,4 +32,14 @@ class Resource extends Model
     {
         return $this->hasMany(Booking::class)->whereNotIn('status', ['cancelled']);
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function getAverageRatingAttribute()
+    {
+        return $this->reviews()->avg('rating') ?? 0;
+    }
 }

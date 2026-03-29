@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: booking_api
     ports:
-      - "8000:8000"
+      - "8000:80"
     volumes:
       - ./src:/var/www/html
     depends_on:
@@ -15,6 +15,12 @@ services:
     environment:
       - APP_ENV=local
       - APP_DEBUG=true
+      - DB_CONNECTION=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=booking
+      - DB_USERNAME=booking
+      - DB_PASSWORD=secret
 
   mysql:
     image: mysql:8.0

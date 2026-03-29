@@ -47,60 +47,55 @@ class BookingController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'resource_id' => 'required|exists:resources,id',
             'start_time' => 'required|date|after:now',
             'end_time' => 'required|date|after:start_time',
-            'purpose' => 'nullable|string|max:500',
-        ], [
-            'start_time.after' => 'Start time must be in the future',
-            'end_time.after' => 'End time must be after start time',
+            'purpose' => 'nullable|string|max:255',
         ]);
 
-        // Проверка: бронирование не более чем на 8 часов
-        $start = \Carbon\Carbon::parse($request->start_time);
-        $end = \Carbon\Carbon::parse($request->end_time);
-        $duration = $start->diffInHours($end);
+        $userId = auth()->id();
+        $resourceId = $validated['resource_id'];
+        $startTime = $validated['start_time'];
+        $endTime = $validated['end_time'];
 
-        if ($duration > 8) {
+        try {
+            $booking = DB::transaction(function () use ($userId, $resourceId, $startTime, $endTime, $validated) {
+                
+                $conflict = Booking::where('resource_id', $resourceId)
+                    ->where('status', '!=', 'cancelled')
+                    ->where(function ($query) use ($startTime, $endTime) {
+                        $query->where('start_time', '<', $endTime)
+                            ->where('end_time', '>', $startTime);
+                    })
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($conflict) {
+                    throw new \Exception('Time slot is already booked', 409);
+                }
+
+                return Booking::create([
+                    'user_id' => $userId,
+                    'resource_id' => $resourceId,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'status' => 'confirmed',
+                    'purpose' => $validated['purpose'] ?? null,
+                ]);
+            });
+
             return response()->json([
-                'message' => 'Booking duration cannot exceed 8 hours',
-                'error' => 'Duration limit exceeded'
-            ], 422);
+                'message' => 'Booking created successfully',
+                'data' => $booking->load('resource', 'user')
+            ], 201);
+
+        } catch (\Exception $e) {
+            if ($e->getCode() === 409 || str_contains($e->getMessage(), 'already booked')) {
+                return response()->json(['error' => 'Time slot is already booked'], 409);
+            }
+            return response()->json(['error' => 'Failed to create booking'], 500);
         }
-
-        // Проверка на пересечение времени
-        $hasConflict = Booking::where('resource_id', $request->resource_id)
-            ->where('status', '!=', 'cancelled')
-            ->where(function($query) use ($request) {
-                $query->whereBetween('start_time', [$request->start_time, $request->end_time])
-                    ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
-                    ->orWhere(function($q) use ($request) {
-                        $q->where('start_time', '<=', $request->start_time)
-                            ->where('end_time', '>=', $request->end_time);
-                    });
-            })->exists();
-
-        if ($hasConflict) {
-            return response()->json([
-                'message' => 'This resource is already booked for the selected time period',
-                'error' => 'Time conflict'
-            ], 422);
-        }
-
-        $booking = Booking::create([
-            'user_id' => $request->user()->id,
-            'resource_id' => $request->resource_id,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
-            'status' => 'pending',
-            'purpose' => $request->purpose,
-        ]);
-
-        return response()->json([
-            'message' => 'Booking created successfully',
-            'booking' => $booking->load(['user', 'resource']),
-        ], 201);
     }
 
     /**

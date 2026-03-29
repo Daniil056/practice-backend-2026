@@ -6,29 +6,51 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\ReviewController;
 
-// Публичные маршруты (аутентификация)
+// ==================== ПУБЛИЧНЫЕ МАРШРУТЫ ====================
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// Защищённые маршруты (требуют авторизации)
-// Защищённые маршруты (требуют авторизации)
+// ==================== ЗАЩИЩЁННЫЕ МАРШРУТЫ ====================
 Route::middleware('auth:sanctum')->group(function () {
 
-    // Аутентификация
+    // 🔐 Аутентификация
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
 
-    // Ресурсы
-    Route::apiResource('resources', ResourceController::class);
+    // 📦 Ресурсы
+    // Чтение — для всех авторизованных
+    Route::get('/resources', [ResourceController::class, 'index']);
+    Route::get('/resources/{resource}', [ResourceController::class, 'show']);
+    
+    // Создание/изменение/удаление — ТОЛЬКО АДМИНАМ
+    Route::middleware('isAdmin')->group(function () {
+        Route::post('/resources', [ResourceController::class, 'store']);
+        Route::put('/resources/{resource}', [ResourceController::class, 'update']);
+        Route::delete('/resources/{resource}', [ResourceController::class, 'destroy']);
+    });
 
-    // Бронирования
+    // 📅 Бронирования
     Route::get('/bookings/my', [BookingController::class, 'myBookings']);
     Route::post('/bookings/{booking}/confirm', [BookingController::class, 'confirm']);
     Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
-    Route::apiResource('bookings', BookingController::class);
+    
+    // Основной CRUD бронирований
+    Route::get('/bookings', [BookingController::class, 'index']);
+    Route::post('/bookings', [BookingController::class, 'store']);
+    Route::get('/bookings/{booking}', [BookingController::class, 'show']);
+    Route::put('/bookings/{booking}', [BookingController::class, 'update']);
+    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy']);
 
-    // Аналитика (только авторизованные)
+    // ⭐ ОТЗЫВЫ И РЕЙТИНГ (Этап 4 — обязательно!)
+    Route::get('/resources/{resource}/reviews', [ReviewController::class, 'index']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/resources/{resource}/reviews', [ReviewController::class, 'store']);
+        Route::delete('/resources/{resource}/reviews/{review}', [ReviewController::class, 'destroy']);
+    });
+
+    // 📊 Аналитика
     Route::get('/analytics/overview', [AnalyticsController::class, 'overview']);
     Route::get('/analytics/resource-utilization', [AnalyticsController::class, 'resourceUtilization']);
     Route::get('/analytics/resources/{resource}/schedule', [AnalyticsController::class, 'resourceSchedule']);
